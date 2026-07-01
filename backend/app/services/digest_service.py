@@ -143,7 +143,12 @@ def _fallback_digest_from_raw_items(raw_items: list[RawItem], date_str: str, sum
     }
 
 
-def generate_digest(db: Session, job_type: str = "daily") -> DigestJob:
+def generate_digest(
+    db: Session,
+    job_type: str = "daily",
+    auto_fetch: bool | None = None,
+    allow_recent_fallback: bool = False,
+) -> DigestJob:
     """生成日报：采集 -> 过滤 -> LLM总结 -> 渲染"""
     date_str = datetime.now().strftime("%Y-%m-%d")
     job = DigestJob(
@@ -158,14 +163,17 @@ def generate_digest(db: Session, job_type: str = "daily") -> DigestJob:
 
     try:
         # 1. 采集（如果是daily则自动采集，manual则用已有数据）
-        if job_type == "daily":
+        if auto_fetch is None:
+            auto_fetch = job_type == "daily"
+
+        if auto_fetch:
             fetch_results = fetch_all_sources(db)
         else:
             fetch_results = {"total": 0, "success": 0, "failed": 0, "new_items": 0}
 
         # 2. 过滤排序
         raw_items = _filter_and_sort_items(db, max_items=50)
-        if len(raw_items) < 20:
+        if allow_recent_fallback and len(raw_items) < 20:
             seen_item_ids = {item.id for item in raw_items}
             recent_processed_items = _filter_and_sort_items(
                 db,
@@ -306,7 +314,12 @@ def generate_digest(db: Session, job_type: str = "daily") -> DigestJob:
                 job.processed_count += 1
 
         # 更新raw_items状态
-        db.query(RawItem).filter(RawItem.status == "pending").update({RawItem.status: "processed"})
+        raw_item_ids = [item.id for item in raw_items]
+        if raw_item_ids:
+            db.query(RawItem).filter(
+                RawItem.id.in_(raw_item_ids),
+                RawItem.status == "pending",
+            ).update({RawItem.status: "processed"}, synchronize_session=False)
 
         job.status = "success"
         job.finished_at = datetime.utcnow()
@@ -356,7 +369,7 @@ def send_digest(db: Session, job_id: int) -> dict:
 
 def run_full_pipeline(db: Session, job_type: str = "daily") -> dict:
     """执行完整流程：采集 -> 生成日报 -> 发送邮件"""
-    job = generate_digest(db, job_type)
+    job = generate_digest(db, job_type, auto_fetch=True, allow_recent_fallback=False)
     if job.status != "success":
         return {"success": False, "job_id": job.id, "error": job.error_message or "日报生成失败"}
 

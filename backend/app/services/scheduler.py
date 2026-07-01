@@ -42,7 +42,7 @@ def _digest_job():
     try:
         logger.info("定时生成日报任务开始")
         from app.services.digest_service import generate_digest
-        generate_digest(db, job_type="daily")
+        generate_digest(db, job_type="daily", auto_fetch=False, allow_recent_fallback=False)
         logger.info("定时生成日报任务完成")
     except Exception as e:
         logger.error(f"定时生成日报任务失败: {e}")

@@ -16,7 +16,7 @@ export function removeToken(): void {
 
 const client = axios.create({
   baseURL: '/api/admin',
-  timeout: 30000,
+  timeout: 180000,
   headers: {
     'Content-Type': 'application/json',
   },

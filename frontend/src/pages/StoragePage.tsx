@@ -109,6 +109,8 @@ export default function StoragePage() {
   const [cleaning, setCleaning] = useState(false)
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false)
   const [cleanupDays, setCleanupDays] = useState(30)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [deleting, setDeleting] = useState(false)
   const { showToast } = useToast()
 
   const currentTab = tabs[activeTab]
@@ -125,6 +127,7 @@ export default function StoragePage() {
         setData(d.items || [])
         setTotalPages(d.total_pages || Math.ceil((d.total || 0) / 20) || 1)
       }
+      setSelectedIds([])
     } catch (err) {
       showToast(err instanceof Error ? err.message : '获取数据失败', 'error')
       setData([])
@@ -135,6 +138,7 @@ export default function StoragePage() {
 
   useEffect(() => {
     setPage(1)
+    setSelectedIds([])
   }, [activeTab])
 
   useEffect(() => {
@@ -155,6 +159,51 @@ export default function StoragePage() {
     }
   }
 
+  const visibleIds = data
+    .map((item) => item.id)
+    .filter((id): id is number => typeof id === 'number')
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id))
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allVisibleSelected ? [] : visibleIds)
+  }
+
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id])
+  }
+
+  const handleDeleteOne = async (id: number) => {
+    if (!window.confirm(`确定删除 ID ${id} 吗？此操作不可恢复。`)) return
+    setDeleting(true)
+    try {
+      const res = await client.delete(`/storage/${currentTab.key}/${id}`)
+      showToast(res.data?.message || '已删除', 'success')
+      fetchData()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '删除失败', 'error')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) {
+      showToast('请先勾选要删除的数据', 'error')
+      return
+    }
+    if (!window.confirm(`确定删除已勾选的 ${selectedIds.length} 条数据吗？此操作不可恢复。`)) return
+    setDeleting(true)
+    try {
+      const res = await client.post(`/storage/${currentTab.key}/bulk-delete`, { ids: selectedIds })
+      showToast(res.data?.message || '已删除', 'success')
+      fetchData()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '批量删除失败', 'error')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -163,6 +212,13 @@ export default function StoragePage() {
           <h3 className="text-xl font-semibold text-gray-800">存储管理</h3>
           <p className="text-sm text-gray-500 mt-1">查看和管理系统存储的数据</p>
         </div>
+        <button
+          onClick={handleBulkDelete}
+          disabled={selectedIds.length === 0 || deleting}
+          className="btn-danger disabled:opacity-50"
+        >
+          删除已选 {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
+        </button>
         <button
           onClick={() => setShowCleanupConfirm(true)}
           className="btn-danger"
@@ -201,23 +257,44 @@ export default function StoragePage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="px-4 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600"
+                      />
+                    </th>
                     {currentTab.columns.map((col) => (
                       <th key={col.key} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">
                         {col.label}
                       </th>
                     ))}
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.length === 0 ? (
                     <tr>
-                      <td colSpan={currentTab.columns.length} className="px-4 py-12 text-center text-gray-400">
+                      <td colSpan={currentTab.columns.length + 2} className="px-4 py-12 text-center text-gray-400">
                         暂无数据
                       </td>
                     </tr>
                   ) : (
                     data.map((item, idx) => (
                       <tr key={(item.id as number) || idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          {typeof item.id === 'number' && (
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(item.id)}
+                              onChange={() => toggleSelectOne(item.id as number)}
+                              className="h-4 w-4 rounded border-gray-300 text-purple-600"
+                            />
+                          )}
+                        </td>
                         {currentTab.columns.map((col) => {
                           const val = item[col.key]
                           const display = col.format ? col.format(val) : String(val ?? '-')
@@ -227,6 +304,17 @@ export default function StoragePage() {
                             </td>
                           )
                         })}
+                        <td className="px-4 py-3">
+                          {typeof item.id === 'number' && (
+                            <button
+                              onClick={() => handleDeleteOne(item.id as number)}
+                              disabled={deleting}
+                              className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                            >
+                              删除
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))
                   )}

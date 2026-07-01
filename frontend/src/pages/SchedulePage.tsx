@@ -6,7 +6,7 @@ import Loading from '../components/Loading'
 interface ScheduleConfig {
   enabled: boolean
   fetch_time: string
-  generate_time: string
+  digest_time: string
   send_time: string
   timezone: string
   weekdays_only: boolean
@@ -15,7 +15,7 @@ interface ScheduleConfig {
 const defaultConfig: ScheduleConfig = {
   enabled: false,
   fetch_time: '06:00',
-  generate_time: '07:00',
+  digest_time: '07:00',
   send_time: '08:00',
   timezone: 'Asia/Shanghai',
   weekdays_only: true,
@@ -103,7 +103,7 @@ export default function SchedulePage() {
       gradient: 'from-blue-500 to-indigo-600',
     },
     {
-      key: 'generate_time' as const,
+      key: 'digest_time' as const,
       label: '生成时间',
       desc: 'AI处理资讯并生成日报内容',
       icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
@@ -229,6 +229,28 @@ export default function SchedulePage() {
       <div className="card p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-1">手动操作</h3>
         <p className="text-sm text-gray-500 mb-4">无需等待定时计划，立即执行任务（操作记录可在任务日志查看）</p>
+        <button
+          onClick={() => handleTrigger('pipeline', '/schedule/trigger-pipeline', '完整链路')}
+          disabled={triggering !== null}
+          className="w-full mb-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-4 text-left text-white shadow-sm transition hover:shadow-lg disabled:opacity-50"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold">立即运行完整链路</p>
+              <p className="mt-1 text-sm text-purple-100">采集最新资讯，调用 LLM 生成日报，并发送给启用的收件人</p>
+            </div>
+            {triggering === 'pipeline' ? (
+              <svg className="h-6 w-6 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
+          </div>
+        </button>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             onClick={() => handleTrigger('fetch', '/schedule/trigger-fetch', '采集')}
