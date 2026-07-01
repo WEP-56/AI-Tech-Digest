@@ -1,0 +1,56 @@
+# Secrets and local config
+key
+*.env
+*.env.*
+!.env.example
+backend/.env
+
+# Runtime data
+backend/data/
+.uploads/
+uploads/
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+backend/server.out.log
+backend/server.err.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Codex / local agent state
+.agents/
+.codex/
