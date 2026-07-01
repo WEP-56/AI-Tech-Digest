@@ -1,11 +1,9 @@
-version: "3.8"
-
 services:
   app:
     build: ./backend
     container_name: ai-digest-mailer
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-18080}:8000"
     volumes:
       - ./backend/data:/app/data
       - ./backend/.env:/app/.env:ro
