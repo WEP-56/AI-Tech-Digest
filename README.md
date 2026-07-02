@@ -182,3 +182,6 @@ aimailer/
 - JWT Token 认证
 - 前端不回显完整密钥（掩码显示）
 - 日志不记录敏感信息
+
+## LD
+[linux.do](https://linux.do/)
